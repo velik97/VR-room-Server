@@ -3,7 +3,7 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
-public class MyNetworkMaanger : MonoBehaviour {
+public class MyNetworkManager : MonoSingleton <MyNetworkManager> {
 
 	public Text logText;
 
@@ -12,6 +12,8 @@ public class MyNetworkMaanger : MonoBehaviour {
 
 	public bool lampIsOn;
 
+	public Text serverButtonText;
+
 	public const short SpawnPlayerMessageId = 101;
 	public const short PLayerConnectMessageId = 102;
 	public const short PLayerDisonnectMessageId = 103;
@@ -19,7 +21,26 @@ public class MyNetworkMaanger : MonoBehaviour {
 	public const short LampStateMessageId = 105;
 	public const short ErrorMessageId = 106;
 
-	public void SetupServer() {
+	private bool listening;
+
+	void Start () {
+		listening = false;
+		serverButtonText.text = "Start server";
+	}
+
+	public void StartStopServer () {
+		if (listening) {
+			NetworkServer.Shutdown ();
+			GetComponent <LocalDiscovery> ().StopBroadcast ();
+			listening = false;
+			serverButtonText.text = "Start server";
+			Logger.Instance.Log ("Stopped listening"); 
+		} else {
+			GetComponent <LocalDiscovery> ().StartBroadcasting ();
+		}
+	}
+
+	public void SetupServer(int port) {
 
 		connectionIdPalyerIdDict = new Dictionary <int,int> ();
 		freePlayerIds = new List<int> ();
@@ -28,9 +49,12 @@ public class MyNetworkMaanger : MonoBehaviour {
 		}
 
 		RegisterHandlers ();
-		NetworkServer.Listen(6321);
+		NetworkServer.Listen(port);
 
-		Log ("ServerStarted");
+		listening = true;
+		serverButtonText.text = "Stop server";
+
+		Logger.Instance.Log ("Started listening on port: " + port);
 	}
 
 	void RegisterHandlers () {
@@ -45,7 +69,7 @@ public class MyNetworkMaanger : MonoBehaviour {
 
 		// Checking if there are free playerIds on server
 		if (freePlayerIds.Count == 0) {
-			Log ("[Connection error]: server is full (4 clients)");
+			Logger.Instance.Log ("[Connection error]: server is full (4 clients)");
 			msg.conn.Disconnect ();
 			return;
 		}
@@ -81,7 +105,7 @@ public class MyNetworkMaanger : MonoBehaviour {
 		connectionIdPalyerIdDict.Add (newConnectionId, newPlayerId);
 		freePlayerIds.Remove (newPlayerId);
 
-		Log ("Connected client playerId: " + newPlayerId + ", connectionId: " + newConnectionId); 
+		Logger.Instance.Log ("Connected client playerId: " + newPlayerId + ", connectionId: " + newConnectionId); 
 	}
 
 	void OnDisconnectClient (NetworkMessage msg) {
@@ -101,14 +125,14 @@ public class MyNetworkMaanger : MonoBehaviour {
 				NetworkServer.SendToClient (id, PLayerDisonnectMessageId, playerDisconnectMessage);
 			}
 
-			Log ("Disconnected client playerId: " + playerId + ", connectionId: " + connectionId); 
+			Logger.Instance.Log ("Disconnected client playerId: " + playerId + ", connectionId: " + connectionId); 
 		}
 	}
 
 	void OnChangeLampState (NetworkMessage msg) {
 		LampStateMessage lampStateMessage = msg.ReadMessage <LampStateMessage> ();
 
-		Log ("PlayerId: " + connectionIdPalyerIdDict[msg.conn.connectionId] + ", lamp state: " + lampStateMessage._on); 
+		Logger.Instance.Log ("PlayerId: " + connectionIdPalyerIdDict[msg.conn.connectionId] + ", lamp state: " + lampStateMessage._on); 
 		lampIsOn = lampStateMessage._on;
 
 		NetworkServer.SendToAll (LampStateMessageId, lampStateMessage);
@@ -126,11 +150,6 @@ public class MyNetworkMaanger : MonoBehaviour {
 				NetworkServer.SendToClient (connectionId, PLayerTransformMessageId, playerTransformMessage);
 			}
 		}
-	}
-
-	void Log (string log) {
-		logText.text += "\n" + log;
-		Debug.Log (log);
 	}
 
 }
