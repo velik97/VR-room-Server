@@ -14,25 +14,25 @@ using UnityEngine.Networking;
 
 public class PlayerSpawnMessage : MessageBase {
 
-	public int playerID;
+	public int playerId;
 
 }
 
 public class PLayerConnectMessage : MessageBase {
 
-	public int playerID;
+	public int playerId;
 
 }
 
 public class PLayerDisonnectMessage : MessageBase {
 
-	public int playerID;
+	public int playerId;
 
 }
 
 public class PLayerTransformMessage : MessageBase {
 
-	public int playerID;
+	public int playerId;
 //	public Vector3 position;
 	public Vector3 eulerAngles;
 
