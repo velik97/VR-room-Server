@@ -5,8 +5,6 @@ using System.Collections.Generic;
 
 public class MyNetworkManager : MonoSingleton <MyNetworkManager> {
 
-	public Text logText;
-
 	public Dictionary <int, int> connectionIdPalyerIdDict;
 	public List <int> freePlayerIds;
 
@@ -23,19 +21,23 @@ public class MyNetworkManager : MonoSingleton <MyNetworkManager> {
 
 	private bool listening;
 
-	void Start () {
+	void Awake () {
+		
 		listening = false;
 		serverButtonText.text = "Start server";
 	}
 
-	public void StartStopServer () {
+	public void OnButtonClicked () {
+		
 		if (listening) {
+			
 			NetworkServer.Shutdown ();
 			GetComponent <LocalDiscovery> ().StopBroadcast ();
 			listening = false;
 			serverButtonText.text = "Start server";
 			Logger.Instance.Log ("Stopped listening"); 
 		} else {
+			
 			GetComponent <LocalDiscovery> ().StartBroadcasting ();
 		}
 	}
@@ -58,6 +60,7 @@ public class MyNetworkManager : MonoSingleton <MyNetworkManager> {
 	}
 
 	void RegisterHandlers () {
+		
 		NetworkServer.RegisterHandler (MsgType.Connect, OnConnectedClient);
 		NetworkServer.RegisterHandler (MsgType.Disconnect, OnDisconnectClient);
 
@@ -125,22 +128,25 @@ public class MyNetworkManager : MonoSingleton <MyNetworkManager> {
 				NetworkServer.SendToClient (id, PLayerDisonnectMessageId, playerDisconnectMessage);
 			}
 
-			Logger.Instance.Log ("Disconnected client playerId: " + playerId + ", connectionId: " + connectionId); 
+			Logger.Instance.Log ("Disconnected client. playerId: " + playerId + ", connectionId: " + connectionId); 
+		} else {
+			
+			Logger.Instance.Log ("Trying to disconnect client with playerId " + playerId + ", but it doesn't exist");
 		}
 	}
 
 	void OnChangeLampState (NetworkMessage msg) {
+		
 		LampStateMessage lampStateMessage = msg.ReadMessage <LampStateMessage> ();
+		lampIsOn = lampStateMessage._on;
+		NetworkServer.SendToAll (LampStateMessageId, lampStateMessage);
 
 		Logger.Instance.Log ("PlayerId: " + connectionIdPalyerIdDict[msg.conn.connectionId] + ", lamp state: " + lampStateMessage._on); 
-		lampIsOn = lampStateMessage._on;
-
-		NetworkServer.SendToAll (LampStateMessageId, lampStateMessage);
 	}
 
 	void OnPlayerTransform (NetworkMessage msg) {
+		
 		PLayerTransformMessage playerTransformMessage = msg.ReadMessage <PLayerTransformMessage> ();
-
 		int playerId = playerTransformMessage.playerId;
 
 		foreach (int connectionId in connectionIdPalyerIdDict.Keys) {
